@@ -7,6 +7,8 @@ Pydantic 的类型校验（非数组、元素非字符串等）自动产出 422�
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -19,6 +21,15 @@ class AnchorIn(BaseModel):
     anchors: list[tuple[int, int]] = Field(
         default_factory=list,
         description="锚点索引对集合；空数组（或缺省）表示清空锚点、恢复全局最优",
+    )
+    expected_version: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "乐观并发前提：替换所基于的当前作业版本。仅当它与数据库当前版本"
+            "一致时替换才会成功；不一致返回 409 且状态不变。"
+            "缺省表示不附带前提（兼容旧客户端的无保护替换）。"
+        ),
     )
 
     @field_validator("anchors", mode="before")
@@ -40,3 +51,6 @@ class JobOut(BaseModel):
     anchors: list[Pair]
     result: list[Pair]
     length: int
+    # 当前持久化版本与最后更新时间：成功响应必须与随后 GET 读到的逐项一致。
+    version: int
+    updated_at: datetime
